@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NEURON compiled mechanisms
+x86_64/
+*.dll
+*.so
+*.dylib
+
+# Simulation outputs
+outputs/
+
+# Python cache
+.pytest_cache/
