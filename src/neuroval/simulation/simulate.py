@@ -6,6 +6,7 @@ single-cell NEURON models.
 """
 
 from pathlib import Path
+from neuron import h, load_mechanisms
 
 
 class SimulationRunner:
@@ -27,6 +28,7 @@ class SimulationRunner:
     
     def validate_model(self):
         """Validate the model directory structure."""
+        
 
         required_dirs = {
             "checkpoints": self.checkpoints_dir,
@@ -45,3 +47,20 @@ class SimulationRunner:
             raise FileNotFoundError(
                 f"No Cell_*.hoc files found in: {self.checkpoints_dir}"
             )
+        
+    def load_model(self):
+        """Load the NEURON model."""
+        load_mechanisms(str(self.model_path.parent / "mechanisms"))
+
+        h.load_file("stdrun.hoc")
+        hoc_files = list(self.checkpoints_dir.glob("Cell_*.hoc"))
+
+        if not hoc_files:
+            raise FileNotFoundError(
+                f"No Cell_*.hoc files found in: {self.checkpoints_dir}"
+            )
+
+        self.hoc_file = hoc_files[0]
+
+        h.chdir(str(self.checkpoints_dir))
+        h.load_file(str(self.hoc_file.name))
