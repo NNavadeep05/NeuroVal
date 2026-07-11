@@ -8,6 +8,16 @@ __pycache__/
 venv/
 env/
 
+# Packaging
+*.egg-info/
+build/
+dist/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Jupyter
 .ipynb_checkpoints/
 
@@ -27,6 +37,3 @@ x86_64/
 
 # Simulation outputs
 outputs/
-
-# Python cache
-.pytest_cache/

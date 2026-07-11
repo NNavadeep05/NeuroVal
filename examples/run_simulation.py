@@ -4,7 +4,7 @@ Example: Run a single-cell current-clamp simulation.
 
 import matplotlib.pyplot as plt
 
-from neuroval.simulation.simulate import SimulationRunner
+from neuroval.validation.pipeline import ValidationPipeline
 
 
 # Update this path to point to your neuron model.
@@ -17,16 +17,16 @@ MODEL_PATH = (
 def main():
     """Run a current-clamp simulation and plot the voltage trace."""
 
-    runner = SimulationRunner(MODEL_PATH)
+    pipeline = ValidationPipeline(MODEL_PATH)
 
-    runner.load_model()
-
-    time, voltage = runner.run_simulation(
+    results = pipeline.run(
         amplitude=0.6,
     )
 
+    print(results["features"])
+
     plt.figure(figsize=(10, 5))
-    plt.plot(time, voltage)
+    plt.plot(results["time"], results["voltage"])
 
     plt.xlabel("Time (ms)")
     plt.ylabel("Membrane Potential (mV)")
