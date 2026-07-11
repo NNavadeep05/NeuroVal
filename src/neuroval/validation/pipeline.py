@@ -2,8 +2,8 @@
 Validation pipeline for NeuroVal.
 """
 
-import time
 
+from neuroval.validation.comparison import FeatureComparator
 from neuroval.features.extractor import FeatureExtractor
 from neuroval.simulation.simulate import SimulationRunner
 
@@ -16,6 +16,7 @@ class ValidationPipeline:
 
         self.runner = SimulationRunner(model_path)
         self.extractor = FeatureExtractor()
+        self.comparator = FeatureComparator()
 
     def run(
         self,
@@ -49,3 +50,32 @@ class ValidationPipeline:
             "voltage": voltage,
             "features": features,
         }
+    
+    def validate(
+        self,
+        experimental_features,
+        amplitude=0.2,
+        delay=100,
+         duration=500,
+        tstop=700,
+        v_init=-87,
+    ):
+        
+        """Run a validation experiment."""
+
+        results = self.run(
+             amplitude=amplitude,
+            delay=delay,
+            duration=duration,
+            tstop=tstop,
+            v_init=v_init,
+        )
+
+        comparison = self.comparator.compare(
+            experimental_features,
+            results["features"],
+        )
+
+        results["comparison"] = comparison
+
+        return results
