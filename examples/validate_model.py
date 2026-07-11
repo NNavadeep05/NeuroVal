@@ -1,9 +1,10 @@
 """
-Example: Validate a neuron model against experimental features.
+Example: Validate a neuron model against experimental data.
 """
 
 import matplotlib.pyplot as plt
 
+from neuroval.data import ExperimentalData
 from neuroval.validation.pipeline import ValidationPipeline
 
 
@@ -17,17 +18,14 @@ MODEL_PATH = (
 def main():
     """Run a validation experiment."""
 
+    experimental = ExperimentalData.from_json(
+        "examples/data/experimental_features.json"
+    )
+
     pipeline = ValidationPipeline(MODEL_PATH)
 
-    experimental = {
-        "Spikecount": 12,
-        "RestingPotential": -90,
-        "Mean_AP_amplitude": 71,
-        "Mean_AP_width": 1.0,
-    }
-
     results = pipeline.validate(
-        experimental,
+        experimental.features,
         amplitude=0.6,
     )
 
@@ -35,16 +33,40 @@ def main():
     print("NeuroVal Validation Report")
     print("=" * 40)
 
+    print(
+        f"\nOverall Validation Score : "
+        f"{results['score']:.2f} / 100"
+    )
+
     for feature, values in results["comparison"].items():
 
         print(f"\n{feature}")
 
-        print(f"  Experimental : {values['experimental']}")
-        print(f"  Simulated    : {values['simulated']}")
-        print(f"  Error        : {values['error']:.3f}")
+        print(
+            f"  Experimental   : "
+            f"{values['experimental']}"
+        )
+
+        print(
+            f"  Simulated      : "
+            f"{values['simulated']}"
+        )
+
+        print(
+            f"  Absolute Error : "
+            f"{values['absolute_error']:.3f}"
+        )
+
+        print(
+            f"  Relative Error : "
+            f"{values['relative_error']:.2f}%"
+        )
 
     plt.figure(figsize=(10, 5))
-    plt.plot(results["time"], results["voltage"])
+    plt.plot(
+        results["time"],
+        results["voltage"],
+    )
 
     plt.xlabel("Time (ms)")
     plt.ylabel("Membrane Potential (mV)")
