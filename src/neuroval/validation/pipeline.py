@@ -5,6 +5,7 @@ Validation pipeline for NeuroVal.
 from neuroval.validation.comparison import FeatureComparator
 from neuroval.features.extractor import FeatureExtractor
 from neuroval.simulation.simulate import SimulationRunner
+from neuroval.protocols import CurrentClamp
 
 
 class ValidationPipeline:
@@ -19,55 +20,41 @@ class ValidationPipeline:
 
     def run(
         self,
-        amplitude=0.2,
-        delay=100,
-        duration=500,
-        tstop=700,
-        v_init=-87,
+        protocol=None,
     ):
         """Run a simulation and extract electrophysiological features."""
+
+        if protocol is None:
+            protocol = CurrentClamp()
 
         self.runner.load_model()
 
         time, voltage = self.runner.run_simulation(
-            amplitude=amplitude,
-            delay=delay,
-            duration=duration,
-            tstop=tstop,
-            v_init=v_init,
+            **protocol.to_dict()
         )
 
         features = self.extractor.extract(
             time,
             voltage,
-            stimulus_start=delay,
-            stimulus_end=delay + duration,
-    )
-        
+            stimulus_start=protocol.delay,
+            stimulus_end=protocol.delay + protocol.duration,
+        )
+
         return {
             "time": time,
             "voltage": voltage,
             "features": features,
         }
-    
+
     def validate(
         self,
         experimental_features,
-        amplitude=0.2,
-        delay=100,
-         duration=500,
-        tstop=700,
-        v_init=-87,
+        protocol=None,
     ):
-        
         """Run a validation experiment."""
 
         results = self.run(
-             amplitude=amplitude,
-            delay=delay,
-            duration=duration,
-            tstop=tstop,
-            v_init=v_init,
+            protocol=protocol,
         )
 
         comparison = self.comparator.compare(

@@ -5,6 +5,7 @@ Example: Validate a neuron model against experimental data.
 import matplotlib.pyplot as plt
 
 from neuroval.data import ExperimentalData
+from neuroval.protocols import CurrentClamp
 from neuroval.validation.pipeline import ValidationPipeline
 
 
@@ -22,11 +23,15 @@ def main():
         "examples/data/experimental_features.json"
     )
 
+    protocol = CurrentClamp(
+        amplitude=0.6,
+    )
+
     pipeline = ValidationPipeline(MODEL_PATH)
 
     results = pipeline.validate(
         experimental.features,
-        amplitude=0.6,
+        protocol=protocol,
     )
 
     print("=" * 40)

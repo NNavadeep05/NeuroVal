@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from neuroval.data import ExperimentalData
+from neuroval.protocols import CurrentClamp
 from neuroval.validation.pipeline import ValidationPipeline
 
 
@@ -24,11 +25,15 @@ def test_validation_pipeline():
         DATA_PATH
     )
 
+    protocol = CurrentClamp(
+        amplitude=0.6,
+    )
+
     pipeline = ValidationPipeline(MODEL_PATH)
 
     results = pipeline.validate(
         experimental.features,
-        amplitude=0.6,
+        protocol=protocol,
     )
 
     assert "features" in results
