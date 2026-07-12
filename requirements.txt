@@ -3,3 +3,4 @@ matplotlib
 pandas
 efel
 neuron
+pytest

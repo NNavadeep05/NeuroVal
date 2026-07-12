@@ -1,14 +1,40 @@
 from pathlib import Path
-import sys
 
-sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
-
-from neuroval.simulation.simulate import SimulationRunner
+from neuroval.data import ExperimentalData
+from neuroval.validation.pipeline import ValidationPipeline
 
 
-MODEL_PATH = r"C:\Users\kp\Desktop\KTH\humanspn\models\optimisations\mCP-dspn-e150917_c6_D1-manimal_1_n24_04102017_cel1"
+MODEL_PATH = (
+    r"C:\Users\kp\Desktop\KTH\humanspn\models\optimisations"
+    r"\hPu-dspn-e160118_c7_D1-mAB5_porta80A_cel15"
+)
 
-runner = SimulationRunner(MODEL_PATH)
-runner.validate_model()
+DATA_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "data"
+    / "experimental_features.json"
+)
 
-print("Model validation passed.")
+
+def test_validation_pipeline():
+    """Run the complete NeuroVal validation pipeline."""
+
+    experimental = ExperimentalData.from_json(
+        DATA_PATH
+    )
+
+    pipeline = ValidationPipeline(MODEL_PATH)
+
+    results = pipeline.validate(
+        experimental.features,
+        amplitude=0.6,
+    )
+
+    assert "features" in results
+    assert "comparison" in results
+    assert "score" in results
+
+    assert results["score"] > 90
+
+    assert "Spikecount" in results["comparison"]
