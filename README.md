@@ -105,7 +105,11 @@ python -c "import neuroval; print('NeuroVal installed successfully!')"
 
 ## Quick Start
 
+> 
 NeuroVal provides two example workflows to help you get started.
+
+**Note:** NeuroVal does not include NEURON model files. Before running the examples, update the `MODEL_PATH` variable in the example scripts to point to your local model directory.
+
 
 ### 1. Run a Current-Clamp Simulation
 

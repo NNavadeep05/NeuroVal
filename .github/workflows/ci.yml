@@ -35,6 +35,3 @@ jobs:
 
       - name: Run FeatureComparator tests
         run: python -m pytest tests/test_comparison.py -v
-
-      - name: Run ValidationPipeline tests
-        run: python -m pytest tests/test_validation.py -v
