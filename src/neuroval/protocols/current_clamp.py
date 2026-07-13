@@ -3,9 +3,15 @@ Current-clamp stimulation protocol for NeuroVal.
 """
 
 
-class CurrentClamp:
-    """Represent a current-clamp stimulation protocol."""
 
+class CurrentClamp:
+
+    """Represent a current-clamp stimulation protocol.
+
+        Stores the stimulation parameters required to execute a
+        current-clamp experiment.
+        """
+    
     def __init__(
         self,
         amplitude=0.2,

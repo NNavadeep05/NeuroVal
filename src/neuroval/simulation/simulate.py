@@ -86,7 +86,7 @@ class SimulationRunner:
         tstop=700,
         v_init=-87,
     ):
-        """Run a current-clamp simulation."""
+        """Run a current-clamp simulation and return the recorded voltage trace."""
 
         h.finitialize(v_init)
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from neuroval.data import ExperimentalData
 from neuroval.protocols import CurrentClamp
-from neuroval.validation.pipeline import ValidationPipeline
+from neuroval.validation import ValidationPipeline
 
 
 # Update this path to point to your neuron model.

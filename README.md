@@ -1,8 +1,10 @@
 # NeuroVal
 
+> ⚠️ NeuroVal is currently under active development. The API may evolve as additional electrophysiology protocols and validation metrics are introduced.
+
 **NeuroVal** is an open-source framework for validating computational single-neuron models against experimental electrophysiological data.
 
-It provides an end-to-end validation pipeline that enables researchers to:
+It provides an end-to-end workflow that enables researchers to:
 
 - Run **NEURON** single-cell models.
 - Extract electrophysiological features using **eFEL**.
@@ -25,6 +27,7 @@ Current capabilities include:
 - **Overall Validation Score** based on feature comparison.
 - **End-to-End Validation Pipeline** for automated model evaluation.
 - **Example Workflows** demonstrating simulation and validation.
+- **Protocol-based experiment configuration**
 
 ## Architecture
 
@@ -32,6 +35,9 @@ NeuroVal follows a modular architecture where each component has a single respon
 
 ```
                  Experimental Data
+                        │
+                        ▼
+                 CurrentClamp
                         │
                         ▼
                ValidationPipeline
@@ -50,7 +56,9 @@ SimulationRunner  FeatureExtractor  FeatureComparator
 - **FeatureExtractor** — Extracts electrophysiological features from voltage traces using eFEL.
 - **ExperimentalData** — Loads and validates experimental feature datasets.
 - **FeatureComparator** — Compares simulated and experimental features and computes validation metrics.
+- **CurrentClamp** — Defines the stimulation protocol for current-clamp experiments.
 - **ValidationPipeline** — Coordinates the complete validation workflow from simulation to report generation.
+
 
 ## Installation
 
@@ -87,6 +95,8 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+> **Note:** The following commands assume the NeuroVal virtual environment has been activated.
+
 ### Verify Installation
 
 ```bash
@@ -95,7 +105,7 @@ python -c "import neuroval; print('NeuroVal installed successfully!')"
 
 ## Quick Start
 
-NeuroVal provides two example workflows.
+NeuroVal provides two example workflows to help you get started.
 
 ### 1. Run a Current-Clamp Simulation
 
@@ -107,10 +117,10 @@ python examples/run_simulation.py
 
 This example:
 
-- loads a NEURON model
-- runs a configurable current-clamp simulation
-- extracts electrophysiological features
-- plots the membrane potential trace
+- Loads a NEURON model
+- Runs a configurable current-clamp simulation
+- Extracts electrophysiological features
+- Plots the membrane potential trace
 
 ---
 
@@ -124,13 +134,35 @@ python examples/validate_model.py
 
 This example:
 
-- loads experimental feature data
-- runs a NEURON simulation
-- extracts electrophysiological features using eFEL
-- compares simulated and experimental features
-- computes an overall validation score
-- generates a validation report
-- plots the simulated membrane potential
+- Loads experimental feature data
+- Runs a NEURON simulation
+- Extracts electrophysiological features using eFEL
+- Compares simulated and experimental features
+- Computes an overall validation score
+- Generates a validation report
+- Plots the simulated membrane potential
+
+## Working with Protocols
+
+NeuroVal separates the definition of an electrophysiological experiment from its execution through protocol objects.
+
+For example, a current-clamp experiment can be configured as:
+
+```python
+from neuroval.protocols import CurrentClamp
+
+protocol = CurrentClamp(
+    amplitude=0.6,
+)
+
+results = pipeline.validate(
+    experimental.features,
+    protocol=protocol,
+)
+```
+
+This design keeps experiment configuration independent from the validation pipeline and provides a scalable foundation for supporting additional electrophysiological protocols in the future.
+
 
 ## Example Output
 
@@ -189,12 +221,17 @@ NeuroVal/
 │   └── neuroval/
 │       ├── data/
 │       ├── features/
+│       ├── protocols/
 │       ├── simulation/
 │       └── validation/
 │
+├── tests/
+│   ├── test_comparison.py
+│   ├── test_experimental.py
+│   └── test_validation.py
+│
 ├── README.md
-├── pyproject.toml
-└── LICENSE
+└── pyproject.toml
 ```
 
 - **examples/** – Ready-to-run example workflows.
@@ -203,6 +240,7 @@ Inside `src/neuroval/`:
 
 - **data/** – Experimental data loading utilities.
 - **features/** – Electrophysiological feature extraction using eFEL.
+- **protocols/** – Electrophysiology protocol definitions.
 - **simulation/** – NEURON model execution.
 - **validation/** – Feature comparison and validation pipeline.
 
@@ -216,10 +254,10 @@ Inside `src/neuroval/`:
 - [x] End-to-end validation pipeline
 - [ ] CSV experimental data support
 - [ ] HTML/PDF validation reports
-- [ ] Unit testing with pytest
-- [ ] Continuous Integration (GitHub Actions)
+- [x] Unit testing with pytest
+- [x] Continuous Integration (GitHub Actions)
 - [ ] NWB support
-- [ ] Multiple stimulation protocols
+- [ ] Additional electrophysiology protocols (FI curve, sag, ramp, ...)
 - [ ] PyPI package release
 
 ## Project Status
@@ -236,18 +274,18 @@ NeuroVal is currently under active development.
 - ✅ Validation scoring
 - ✅ End-to-end validation pipeline
 - ✅ Example workflows
+- ✅ Protocol-based experiment configuration
 
 ### In Progress
 
 - 🚧 Documentation
-- 🚧 Unit testing
 - 🚧 HTML validation reports
 
 ### Planned
 
 - 📋 CSV experimental data support
 - 📋 NWB support
-- 📋 Multiple stimulation protocols
+- 📋 Additional electrophysiology protocols
 - 📋 PyPI package release
 
 ## Acknowledgements

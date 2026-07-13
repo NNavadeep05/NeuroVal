@@ -1,4 +1,4 @@
-from neuroval.validation.comparison import FeatureComparator
+from neuroval.validation import FeatureComparator
 
 
 def test_compare_features():

@@ -2,10 +2,10 @@
 Validation pipeline for NeuroVal.
 """
 
-from neuroval.validation.comparison import FeatureComparator
-from neuroval.features.extractor import FeatureExtractor
-from neuroval.simulation.simulate import SimulationRunner
+from neuroval.features import FeatureExtractor
 from neuroval.protocols import CurrentClamp
+from neuroval.simulation import SimulationRunner
+from neuroval.validation import FeatureComparator
 
 
 class ValidationPipeline:
