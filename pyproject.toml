@@ -9,6 +9,14 @@ description = "Lightweight validation framework for validating single-cell neuro
 readme = "README.md"
 requires-python = ">=3.11"
 
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "efel",
+    "neuron",
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
