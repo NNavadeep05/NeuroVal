@@ -378,3 +378,7 @@ NeuroVal builds on:
 Its design borrows ideas from HippoUnit, BasalUnit, BluePyEfe and BluePyOpt.
 
 NeuroVal was developed during a summer research internship at KTH Royal Institute of Technology. The models and experimental data used for testing belong to the lab and are not included in this repository.
+
+## Author
+
+**Navadeep Nandedapu**
