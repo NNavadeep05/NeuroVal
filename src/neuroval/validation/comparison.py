@@ -1,6 +1,22 @@
 """
 Feature comparison utilities for NeuroVal.
+
+Scoring follows the z-score method shared by HippoUnit, BasalUnit and
+the lab's own validate.py (humanspn optimisations):
+
+    z = |simulated - experimental mean| / experimental std
 """
+
+import math
+
+
+# validate.py gives a feature the model cannot produce this z-score.
+# BluePyOpt's eFELFeature uses max_score = 250 instead; NeuroVal keeps
+# validate.py's value.
+MISSING_FEATURE_Z = 13.13
+
+# validate.py accepts a model when its largest z-score is below this.
+PASS_THRESHOLD = 3.0
 
 
 class FeatureComparator:
@@ -8,71 +24,81 @@ class FeatureComparator:
 
     def compare(
         self,
-        experimental,
-        simulated,
-    ):
-        """Compare feature dictionaries."""
+        targets: dict,
+        simulated: dict,
+    ) -> dict:
+        """Compare simulated features with experimental targets.
+
+        targets is {feature: [mean, std]}; simulated is {feature: value},
+        with None for features the model could not produce. Every target
+        feature appears in the result, so nothing is dropped silently.
+        """
 
         comparison = {}
 
-        for feature, experimental_value in experimental.items():
+        for feature, (mean, std) in targets.items():
 
-            if feature not in simulated:
-                continue
-
-            simulated_value = simulated[feature]
-
-            absolute_error = abs(
-                simulated_value - experimental_value
-            )
-
-            if experimental_value != 0:
-                relative_error = (
-                    absolute_error
-                    / abs(experimental_value)
-                ) * 100
-            else:
-                relative_error = None
+            value = simulated.get(feature)
+            z_score, status = self._z_score(value, mean, std)
 
             comparison[feature] = {
-                "experimental": experimental_value,
-                "simulated": simulated_value,
-                "absolute_error": round(
-                    absolute_error,
-                    3,
-                ),
-                "relative_error": (
-                    round(relative_error, 2)
-                    if relative_error is not None
-                    else None
-                ),
+                "experimental_mean": mean,
+                "experimental_std": std,
+                "simulated": value,
+                "z_score": z_score,
+                "status": status,
             }
 
         return comparison
 
-    def score(self, comparison):
-        """Compute an overall validation score."""
+    @staticmethod
+    def _z_score(value, mean: float, std: float) -> tuple[float, str]:
+        """Return (z-score, status) for one feature.
 
-        relative_errors = []
+        A zero std gives an infinite z even for an exact match, as in
+        HippoUnit and BasalUnit, so that feature always fails.
+        """
 
-        for values in comparison.values():
+        if value is None or not math.isfinite(value):
+            return MISSING_FEATURE_Z, "missing"
 
-            relative_error = values["relative_error"]
+        if std == 0:
+            return math.inf, "zero_std"
 
-            if relative_error is not None:
-                relative_errors.append(relative_error)
+        return abs(value - mean) / std, "ok"
 
-        if len(relative_errors) == 0:
-            return 0.0
+    def summarise(self, comparison: dict) -> dict:
+        """Summarise a comparison.
 
-        average_error = (
-            sum(relative_errors)
-            / len(relative_errors)
-        )
+        mean_abs_z: mean over valid features (HippoUnit, BasalUnit score).
+        max_z: largest z over all features (validate.py score).
+        passed: max_z < PASS_THRESHOLD (validate.py acceptance).
+        problem_features: missing or zero-std features (HippoUnit
+        bad_features, BasalUnit prob_list).
+        """
 
-        score = max(
-            0.0,
-            100.0 - average_error,
-        )
+        valid = [
+            values["z_score"]
+            for values in comparison.values()
+            if values["status"] == "ok"
+        ]
 
-        return round(score, 2)
+        problems = [
+            feature
+            for feature, values in comparison.items()
+            if values["status"] != "ok"
+        ]
+
+        all_z = [values["z_score"] for values in comparison.values()]
+
+        if not all_z or any(math.isnan(z) for z in all_z):
+            max_z = math.nan
+        else:
+            max_z = max(all_z)
+
+        return {
+            "mean_abs_z": sum(valid) / len(valid) if valid else math.nan,
+            "max_z": max_z,
+            "passed": not math.isnan(max_z) and max_z < PASS_THRESHOLD,
+            "problem_features": problems,
+        }

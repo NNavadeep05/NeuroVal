@@ -9,17 +9,29 @@ import efel
 import numpy as np
 
 
+# Spike threshold for somatic recordings, as in the lab's
+# cell_evaluator.py and BasalUnit's define_fitness_calculator().
+SOMA_THRESHOLD = -20.0
+
+
 class FeatureExtractor:
     """Extract electrophysiological features."""
 
     def extract(
         self,
-        time,
-        voltage,
-        stimulus_start,
-        stimulus_end,
-    ):
-        """Extract electrophysiological features."""
+        time: np.ndarray,
+        voltage: np.ndarray,
+        stimulus_start: float,
+        stimulus_end: float,
+        feature_names: list[str],
+        threshold: float = SOMA_THRESHOLD,
+    ) -> dict[str, float | None]:
+        """Extract electrophysiological features.
+
+        Returns {eFEL feature name: value}. Names are kept as in eFEL so
+        they match BluePyEfe and BluePyOpt target files. A feature eFEL
+        cannot compute (for example AP_amplitude without spikes) is None.
+        """
 
         trace = {
             "T": time,
@@ -28,44 +40,46 @@ class FeatureExtractor:
             "stim_end": [stimulus_end],
         }
 
-        feature_names = [
-            "Spikecount",
-            "voltage_base",
-            "AP_amplitude",
-            "AP_width",
-        ]
+        # set_setting is global in eFEL; restore the previous value after.
+        previous_threshold = efel.get_settings().Threshold
+        efel.set_setting("Threshold", threshold)
 
-        features = efel.getFeatureValues(
-            [trace],
-            feature_names,
-        )
+        try:
+            results = efel.get_feature_values(
+                [trace],
+                feature_names,
+                raise_warnings=False,
+            )[0]
+        finally:
+            efel.set_setting("Threshold", previous_threshold)
 
-        result = features[0]
-
-        summary = {
-            "Spikecount": int(
-                result["Spikecount"][0]
-            ),
-            "RestingPotential": round(
-                float(result["voltage_base"][0]),
-                3,
-            ),
-            "Mean_AP_amplitude": round(
-                float(
-                    np.mean(
-                        result["AP_amplitude"]
-                    )
-                ),
-                3,
-            ),
-            "Mean_AP_width": round(
-                float(
-                    np.mean(
-                        result["AP_width"]
-                    )
-                ),
-                3,
-            ),
+        return {
+            name: self._summarise(results[name])
+            for name in feature_names
         }
 
-        return summary
+    @staticmethod
+    def _summarise(values) -> float | None:
+        """Reduce eFEL output to one value per trace.
+
+        Same reduction as BluePyEfe's Recording.compute_efeatures: the mean
+        of the values, or no value when eFEL returns nothing.
+        """
+
+        if values is None:
+            return None
+
+        values = [
+            value for value in values
+            if value is not None and not np.isnan(value)
+        ]
+
+        if len(values) == 0:
+            return None
+
+        mean = float(np.mean(values))
+
+        if not np.isfinite(mean):
+            return None
+
+        return mean

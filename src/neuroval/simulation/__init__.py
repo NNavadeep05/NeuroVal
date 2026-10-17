@@ -2,4 +2,4 @@
 Simulation utilities for NeuroVal.
 """
 
-from .simulate import SimulationRunner
+from .simulate import SimulationError, SimulationRunner
