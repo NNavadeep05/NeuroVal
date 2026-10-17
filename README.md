@@ -1,70 +1,71 @@
 # NeuroVal
 
-> ⚠️ NeuroVal is currently under active development. The API may evolve as additional electrophysiology protocols and validation metrics are introduced.
+> NeuroVal v1 is complete. No further development is planned.
 
-**NeuroVal** is an open-source framework for validating computational single-neuron models against experimental electrophysiological data.
+**NeuroVal** is a lightweight Python framework for validating single-neuron models against experimental electrophysiology data.
 
-It provides an end-to-end workflow that enables researchers to:
+It takes an optimised model (a BluePyOpt `Cell_<n>.hoc` export with its morphology and mechanisms), runs the same current-clamp protocols as the experiment, and checks how close the model's response is to the recorded cells.
 
-- Run **NEURON** single-cell models.
+It provides an end-to-end workflow to:
+
+- Run **NEURON** single-cell models with the settings used during optimisation.
 - Extract electrophysiological features using **eFEL**.
-- Load experimental feature datasets.
-- Compare simulated and experimental responses.
-- Compute quantitative validation metrics.
-- Generate validation reports.
+- Load experimental targets, or build them from raw recordings.
+- Score every feature with a z-score and give a pass/fail result.
+- Save the results as JSON, CSV, plots and an HTML report.
+- Validate every exported Hall of Fame cell in one command.
 
-NeuroVal is designed to be **modular**, **reproducible**, and **extensible**, making it suitable for computational neuroscience research and model evaluation.
+NeuroVal is built to be **modular** and **reproducible**. It was developed and tested with striatal dSPN models.
 
 ## Features
 
-Current capabilities include:
-
-- **Configurable Current-Clamp Simulations** using NEURON.
-- **Automatic Electrophysiological Feature Extraction** using eFEL.
-- **Model settings from the optimisation**: temperature (`celsius`) and `v_init` are read from the model's `config/parameters.json`, and runs use CVode as the lab's `optimize.py` did.
-- **Lab protocols**: step and holding currents are loaded from the model's BluePyOpt `config/protocols.json`.
-- **Experimental targets** loaded from BluePyEfe/BluePyOpt `features.json` files (`[mean, std]` per eFEL feature).
-- **Z-score scoring** per feature: `z = |simulated - mean| / std` (HippoUnit, BasalUnit and the lab's `validate.py`).
-- **Pass/fail** using the lab's criterion: the largest z-score must be below 3.0. Missing features are reported, not skipped.
-- **Experimental recordings**: two-column text or CSV traces (such as the lab's `expdata/*.dat`) with liquid junction potential correction.
-- **Target building** from recordings with BluePyEfe's rules (mean, std and n per feature across recordings).
-- **Saved outputs**: `scores.json`, `model_features.json`, `experimental_features.json`, trace CSVs, plots and an HTML report.
-- **All lab protocols**: the full extraction file (`config/<cell>-features.json`, 59 protocols) can be used instead of the 6 optimisation protocols.
-- **Hall of Fame batch**: every exported `Cell_<n>.hoc` validated, one Python process per cell.
-- **End-to-End Validation Pipeline** for automated model evaluation.
-- **Example Workflows** demonstrating simulation and validation.
-- **Protocol-based experiment configuration**
+- **NEURON simulations** with the model's own temperature and initial voltage (read from `config/parameters.json`) and CVode integration, as in the lab's optimisation.
+- **Lab protocols** loaded from BluePyOpt `protocols.json` files, including the holding current.
+- **eFEL feature extraction** with the original eFEL feature names.
+- **Experimental targets** from `features.json` files (`[mean, std]` per feature).
+- **Recording loading** for two-column text or CSV traces, with liquid junction potential correction.
+- **Target building** from recordings (mean, std and number of recordings per feature).
+- **Z-score scoring** per feature: `z = |model - mean| / std`.
+- **Pass/fail result**: the model passes when the largest z-score is below 3.0. Features the model cannot produce are reported, not skipped.
+- **Saved outputs**: `scores.json`, `model_features.json`, `experimental_features.json`, trace CSVs, plots and `report.html`.
+- **Batch validation** of every exported Hall of Fame cell, one Python process per cell.
+- **Unit and integration tests** with GitHub Actions CI.
 
 ## Architecture
 
 NeuroVal follows a modular architecture where each component has a single responsibility.
 
 ```
-                 Experimental Data
-                        │
-                        ▼
-                 CurrentClamp
-                        │
-                        ▼
-               ValidationPipeline
-                        │
-        ┌───────────────┼────────────────┐
-        ▼               ▼                ▼
-SimulationRunner  FeatureExtractor  FeatureComparator
-        │                                │
-        ▼                                ▼
-     NEURON                     Validation Score
+     Recordings / features.json        protocols.json
+                 │                            │
+                 ▼                            ▼
+          ExperimentalData              CurrentClamp
+                 │                            │
+                 └──────────────┬─────────────┘
+                                ▼
+                       ValidationPipeline
+                                │
+          ┌─────────────────────┼─────────────────────┐
+          ▼                     ▼                     ▼
+  SimulationRunner       FeatureExtractor     FeatureComparator
+          │                     │                     │
+          ▼                     ▼                     ▼
+       NEURON                 eFEL                z-scores
+                                                      │
+                                                      ▼
+                                                   Report
 ```
 
 ### Components
 
-- **SimulationRunner** — Loads and runs NEURON single-cell simulations.
-- **FeatureExtractor** — Extracts electrophysiological features from voltage traces using eFEL.
-- **ExperimentalData** — Loads and validates experimental feature datasets.
-- **FeatureComparator** — Computes per-feature z-scores and the validation summary.
-- **CurrentClamp** — Defines a current-clamp protocol (step plus optional holding current); loads lab protocols with `CurrentClamp.from_bluepyopt()`.
-- **ValidationPipeline** — Coordinates the complete validation workflow from simulation to report generation.
-
+- **SimulationRunner**: loads a `Cell_<n>.hoc` model, applies the model's settings and runs current-clamp simulations.
+- **CurrentClamp**: a current-clamp protocol (test step plus optional holding current). Lab protocols load with `load_bluepyopt_protocols()`.
+- **FeatureExtractor**: extracts eFEL features from a voltage trace.
+- **ExperimentalData**: loads and checks experimental targets.
+- **load_trace / build_targets**: load raw recordings and build targets from them.
+- **FeatureComparator**: computes the z-score of each feature and the summary (mean |z|, max z, pass/fail).
+- **ValidationPipeline**: runs the whole workflow, from simulation to scores.
+- **save_results**: writes the JSON files, trace CSVs, plots and HTML report.
 
 ## Installation
 
@@ -76,6 +77,8 @@ cd NeuroVal
 ```
 
 ### Create a Virtual Environment
+
+NeuroVal was developed with Python 3.11.
 
 ```bash
 python -m venv .venv
@@ -97,31 +100,49 @@ source .venv/bin/activate
 
 ### Install NeuroVal
 
+**Linux / macOS**
+
 ```bash
 pip install -e .
 ```
 
-> **Note:** The following commands assume the NeuroVal virtual environment has been activated.
+**Windows**
+
+NEURON cannot be installed with pip on Windows. Install it with the official NEURON installer (NeuroVal was tested with NEURON 9.0.1), then point Python to it and install the other dependencies:
+
+```bat
+set PYTHONPATH=C:\nrn\lib\python
+pip install --no-deps -e .
+pip install numpy matplotlib pandas efel pytest
+```
+
+> **Note:** The following commands assume the virtual environment is active.
 
 ### Verify Installation
 
 ```bash
-python -c "import neuroval; print('NeuroVal installed successfully!')"
+python -c "import neuroval; from neuron import h; print('NeuroVal installed successfully!')"
 ```
 
 ## Quick Start
 
-> 
-NeuroVal provides two example workflows to help you get started.
+NeuroVal does not include model files or experimental data. The examples take the folder of one optimised model, laid out like the lab's BluePyOpt optimisation folders:
 
-**Note:** NeuroVal does not include NEURON model files. Pass the folder of one optimised model (for example `.../optimisations/hPu-dspn-e160118_c7_D1-mAB5_porta80A_cel15`) to the examples. The folder must contain `checkpoints/`, `morphology/` and `config/`, with compiled mechanisms in the sibling `mechanisms/` folder.
+```
+<model_path>/
+├── checkpoints/Cell_<n>.hoc     exported models
+├── morphology/<cell>.swc        one morphology file
+├── config/parameters.json       celsius and v_init
+├── config/features.json         experimental targets
+├── config/protocols.json        stimulation protocols
+└── expdata/                     raw recordings (optional)
+```
 
-NEURON's hoc templates are global, so validate one model per Python process.
+Compiled mechanisms (`nrnmech.dll` on Windows, built with `mknrndll`) are expected in the `mechanisms/` folder next to the model folder.
 
+NEURON keeps hoc templates global, so NeuroVal validates one model per Python process.
 
 ### 1. Run a Current-Clamp Simulation
-
-Execute:
 
 ```bash
 python examples/run_simulation.py <model_path> --amplitude 0.6 --cell 0
@@ -130,7 +151,7 @@ python examples/run_simulation.py <model_path> --amplitude 0.6 --cell 0
 This example:
 
 - Loads a NEURON model
-- Runs a configurable current-clamp simulation
+- Runs a current-clamp simulation
 - Extracts electrophysiological features
 - Plots the membrane potential trace
 
@@ -138,31 +159,26 @@ This example:
 
 ### 2. Validate a Neuron Model
 
-Execute:
-
 ```bash
-python examples/validate_model.py <model_path> --cell 0
+python examples/validate_model.py <model_path> --cell 0 --output results/
 ```
 
 This example:
 
-- Loads the model's experimental targets (`config/features.json`)
-- Loads the model's protocols (`config/protocols.json`), including holding currents
+- Loads the experimental targets (`config/features.json`) and protocols (`config/protocols.json`)
 - Runs every protocol in NEURON
 - Extracts the target features using eFEL
 - Computes a z-score for each feature
 - Prints a validation report (mean |z|, max z, pass/fail, problem features)
-- Plots the simulated membrane potential of each protocol
+- Saves the JSON files, trace CSVs, plots and `report.html` in `results/`
 
-Use `--protocols IV_546 IDthresh_587` to run a subset and `--no-plot` to skip the plots. Add `--output results/` to save the JSON files, trace CSVs, plots and `report.html`, and `--overlay-recordings` to draw the lab's recordings under the model traces.
+Useful options:
 
-To use all 59 protocols of the lab's extraction for this cell:
-
-```bash
-python examples/validate_model.py <model_path> --targets config/160118_c7_D1-features.json --protocols-file config/160118_c7_D1-protocols.json --cvode-minstep none --output results/
-```
-
-`--cvode-minstep none` uses NEURON's default CVode step, as the lab's `variate.py` does. With the 1e-3 ms minimum step of `optimize.py`, CVode fails on two protocols (APWaveform_568 and Delta_610); their features are then reported as `simulation_failed`, as BluePyOpt scores a failed run.
+- `--protocols IV_546 IDthresh_587`: run only some protocols
+- `--targets` and `--protocols-file`: use other target and protocol files, for example the lab's full extraction with 59 protocols
+- `--overlay-recordings`: draw the recorded traces under the model traces
+- `--cvode-minstep none`: use NEURON's default CVode step (needed for protocols with very sharp steps)
+- `--no-plot`: skip the interactive plots
 
 ---
 
@@ -172,7 +188,7 @@ python examples/validate_model.py <model_path> --targets config/160118_c7_D1-fea
 python examples/build_targets.py <model_path> --out built_features.json
 ```
 
-Reads the lab's recordings in `expdata/` (voltage files `*_ch3_<n>.dat`, junction potential from `config/<cell>-spec.json`) and writes targets in the `features.json` format. For this cell the means match the lab's files exactly. With one recording per protocol, BluePyEfe's rule sets every std to 1e-3, so use several recordings per protocol for real standard deviations.
+Reads the recordings in `expdata/`, applies the liquid junction potential from `config/<cell>-spec.json`, and writes targets in the `features.json` format.
 
 ---
 
@@ -182,40 +198,40 @@ Reads the lab's recordings in `expdata/` (voltage files `*_ch3_<n>.dat`, junctio
 python examples/validate_all_cells.py <model_path> --output results/ --jobs 4
 ```
 
-Runs `validate_model.py` for every exported `Cell_<n>.hoc`, each in its own process, and writes `summary.json`.
+Validates every exported `Cell_<n>.hoc`, each in its own process, and writes a `summary.json` for all cells.
 
 ## Working with Protocols
 
-NeuroVal separates the definition of an electrophysiological experiment from its execution through protocol objects.
-
-For example, a current-clamp experiment can be configured as:
+NeuroVal separates the definition of an experiment (the protocol) from its execution (the pipeline).
 
 ```python
 from neuroval.data import ExperimentalData
 from neuroval.protocols import CurrentClamp, load_bluepyopt_protocols
+from neuroval.report import save_results
 from neuroval.validation import ValidationPipeline
 
 pipeline = ValidationPipeline(model_path, cell_index=0)
 
 # A single protocol defined by hand
-results = pipeline.run(protocol=CurrentClamp(amplitude=0.6))
+results = pipeline.run(protocol=CurrentClamp(amplitude=0.6, holding=0.0009))
 
 # The lab's protocols and targets
 experimental = ExperimentalData.from_json(f"{model_path}/config/features.json")
 protocols = load_bluepyopt_protocols(f"{model_path}/config/protocols.json")
 results = pipeline.validate(experimental, protocols)
+
 print(results["summary"])
+save_results(results, "results/")
 ```
 
-This design keeps experiment configuration independent from the validation pipeline and provides a scalable foundation for supporting additional electrophysiological protocols in the future.
-
+Hand-written protocols and protocols loaded from the lab's files are the same `CurrentClamp` objects, so the pipeline treats them the same way.
 
 ## Example Output
 
-Running the release model (`Cell_0`) of `hPu-dspn-e160118_c7_D1-mAB5_porta80A_cel15` against its own targets:
+Validating the release model (`Cell_0`) of the dSPN model `hPu-dspn-e160118_c7_D1-mAB5_porta80A_cel15` against its targets:
 
 ```bash
-python examples/validate_model.py <model_path> --no-plot
+python examples/validate_model.py <model_path> --no-plot --output results/
 ```
 
 produces (shortened):
@@ -223,7 +239,7 @@ produces (shortened):
 ```text
 ============================================================
 NeuroVal Validation Report
-Targets: config/features.json (optimisation targets)
+Targets: config/features.json
 ============================================================
 
 IV_546
@@ -245,111 +261,120 @@ Passed (max z < 3.0) : False
 Problem features : []
 ```
 
-These are the model's optimisation targets (`config/features.json`), not the lab's population-validation targets (`valdata/`, used by `validate.py`), so failing max z < 3.0 here does not mean the model fails the lab's validation.
+and a `results/` folder with:
 
-NeuroVal integrates with CVode (minimum step 1e-3 ms), the setting of the lab's `optimize.py`. The 37 z-scores sum to 154.0, close to the best fitness BluePyOpt recorded for this run (155.6 in `log.json`). A fixed 0.025 ms step is available with `cvode_active=False`; it gives 159.9 and changes spike-shape features most.
+```
+results/
+├── report.html                  summary, feature tables and plots
+├── scores.json                  z-score and status of every feature
+├── model_features.json          feature values of the model
+├── experimental_features.json   targets used
+├── plots/traces.png             model trace for each protocol
+├── plots/z_scores.png           z-score of each feature, with the 3.0 line
+└── traces/<protocol>.csv        simulated voltage traces
+```
 
-A feature the model cannot produce gets z = 13.13, the penalty used by the lab's `validate.py` (BluePyOpt itself uses 250).
+Validating all exported cells of the same model:
 
-The example also generates a membrane potential plot for visual inspection of the simulated neuronal response.
+| Cell | Mean abs z | Max z | Passed |
+|---|---|---|---|
+| Cell_0 | 4.16 | 30.42 | No |
+| Cell_5 | 4.46 | 31.70 | No |
+| Cell_6 | 4.49 | 33.07 | No |
+| Cell_9 | 4.72 | 32.68 | No |
+
+Checks done with the lab's model:
+
+- Targets rebuilt from the raw recordings match the lab's target files exactly (37 of 37 features, and 532 of 532 in the full extraction).
+- The sum of the 37 z-scores for `Cell_0` (154.0) is close to the fitness BluePyOpt recorded for this model during optimisation (155.6).
+
+The targets above are the ones the model was optimised against. The lab accepts models against a separate set of population targets, so failing max z < 3.0 here does not mean the model is rejected.
 
 ## Project Structure
 
 ```
 NeuroVal/
 ├── examples/
-│   ├── build_targets.py
-│   ├── validate_all_cells.py
 │   ├── run_simulation.py
-│   └── validate_model.py
+│   ├── validate_model.py
+│   ├── build_targets.py
+│   └── validate_all_cells.py
 │
 ├── src/
 │   └── neuroval/
 │       ├── data/
 │       ├── features/
 │       ├── protocols/
+│       ├── report/
 │       ├── simulation/
-│       └── validation/
+│       ├── validation/
+│       └── batch.py
 │
 ├── tests/
-│   ├── test_*.py                         (unit tests, run in CI)
-│   ├── test_validation.py                (integration, needs NEUROVAL_MODEL_PATH)
-│   ├── test_batch_integration.py         (integration)
-│   └── test_experimental_recordings.py   (integration, needs expdata/)
 │
-├── README.md
-└── pyproject.toml
+├── .github/workflows/ci.yml
+├── pyproject.toml
+├── requirements.txt
+└── README.md
 ```
 
-- **examples/** – Ready-to-run example workflows.
+- **examples/**: ready-to-run workflows.
+- **tests/**: unit tests (run in CI) and integration tests (need a model folder).
 
 Inside `src/neuroval/`:
 
-- **data/** – Experimental targets, recording loading and BluePyEfe-style target building.
-- **report/** – JSON outputs, plots and the HTML report.
-- **batch.py** – Helpers for validating all Hall of Fame cells.
-- **features/** – Electrophysiological feature extraction using eFEL.
-- **protocols/** – Electrophysiology protocol definitions.
-- **simulation/** – NEURON model execution.
-- **validation/** – Feature comparison and validation pipeline.
+- **data/**: experimental targets, recording loading and target building.
+- **features/**: feature extraction with eFEL.
+- **protocols/**: protocol definitions and the loader for lab protocol files.
+- **report/**: JSON outputs, plots and the HTML report.
+- **simulation/**: NEURON model loading and simulation.
+- **validation/**: z-score comparison and the validation pipeline.
+- **batch.py**: helpers for validating all Hall of Fame cells.
 
-## Roadmap
+## Running the Tests
 
-- [x] Configurable NEURON simulations
-- [x] eFEL-based feature extraction
-- [x] Experimental data loading (BluePyOpt features.json)
-- [x] Z-score validation with the lab's max-z criterion
-- [x] Lab protocols with holding current
-- [x] End-to-end validation pipeline
-- [x] Text/CSV recording loading and target building
-- [x] Saved JSON outputs, plots and HTML report
-- [x] All protocols of the lab's extraction
-- [x] Validation of every exported Hall of Fame cell
-- [x] Unit testing with pytest
-- [x] Continuous Integration (GitHub Actions)
-- [ ] NWB support
-- [ ] Ramp protocols (no ramp recordings in the lab data yet)
-- [ ] Population targets across cells (needs amplitude matching between cells)
-- [ ] PyPI package release
+Unit tests do not need any model files:
+
+```bash
+python -m pytest tests
+```
+
+Integration tests run the real model. Set `NEUROVAL_MODEL_PATH` to a model folder first (they take about 10 minutes):
+
+```bash
+export NEUROVAL_MODEL_PATH=<model_path>    # Windows: set NEUROVAL_MODEL_PATH=<model_path>
+python -m pytest tests
+```
 
 ## Project Status
 
-NeuroVal is currently under active development.
+NeuroVal v1 is complete and no further development is planned.
 
 ### Implemented
 
-- ✅ Configurable NEURON current-clamp simulations
-- ✅ eFEL-based electrophysiological feature extraction
-- ✅ Experimental targets from BluePyOpt features.json
-- ✅ Z-score validation (mean |z|, max z < 3.0)
-- ✅ Temperature and v_init from the model's parameters.json
+- ✅ Model loading with the optimisation settings (temperature, v_init, CVode)
 - ✅ Lab protocols with holding current
-- ✅ End-to-end validation pipeline
-- ✅ Example workflows
-- ✅ Protocol-based experiment configuration
-- ✅ Recording loading and target building from the lab's expdata
+- ✅ eFEL feature extraction
+- ✅ Z-score validation and pass/fail result
+- ✅ Recording loading and target building
 - ✅ JSON outputs, plots and HTML report
-- ✅ All 59 protocols of the lab's extraction
 - ✅ Batch validation of exported Hall of Fame cells
+- ✅ Unit and integration tests, CI
 
-### Planned
+### Known Limitations
 
-- 📋 Population targets across cells
-- 📋 NWB support
-- 📋 PyPI package release
+- Targets come from one recorded cell, not a population of cells.
+- Only exported `Cell_<n>.hoc` files can be validated (4 of the 10 Hall of Fame sets in the test model).
+- One model per Python process, because NEURON's hoc templates are global.
+- Morphology folder and file names must not contain spaces.
 
 ## Acknowledgements
 
-NeuroVal builds upon several excellent open-source scientific software projects, including:
+NeuroVal builds on:
 
 - NEURON
 - eFEL (Electrophys Feature Extraction Library)
 
-The framework is being developed as an open-source project for computational neuroscience model validation.
+Its design borrows ideas from HippoUnit, BasalUnit, BluePyEfe and BluePyOpt.
 
-
-
-
-
-
-
+NeuroVal was developed during a summer research internship at KTH Royal Institute of Technology. The models and experimental data used for testing belong to the lab and are not included in this repository.
