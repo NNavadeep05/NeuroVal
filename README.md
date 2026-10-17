@@ -138,7 +138,14 @@ NeuroVal does not include model files or experimental data. The examples take th
 └── expdata/                     raw recordings (optional)
 ```
 
-Compiled mechanisms (`nrnmech.dll` on Windows, built with `mknrndll`) are expected in the `mechanisms/` folder next to the model folder.
+Compiled mechanisms are expected in the shared `mechanisms/` folder next to the model folder (`optimisations/mechanisms/` in the lab's layout). Compile them from inside that folder:
+
+- **Windows**: run `mknrndll` in `mechanisms/` (creates `nrnmech.dll`)
+- **Linux / macOS**: run `nrnivmodl` in `mechanisms/` (creates a platform folder such as `x86_64/`)
+
+Compiling from the model folder (`nrnivmodl ./mechanisms`, as the lab's scripts do) puts the library in the model folder, where NeuroVal does not look.
+
+With NEURON 9, `tmglut.mod` does not compile as it is: change `scop_random(1)` to `scop_random()` first.
 
 NEURON keeps hoc templates global, so NeuroVal validates one model per Python process.
 
